@@ -128,3 +128,26 @@ export const createGroup = async (req: Request, res: Response) => {
         res.status(500).json({ status: 'error', message: 'Error creating group' });
     }
 };
+
+export const getUnreadCount = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id;
+        const { lastCheck } = req.query as any;
+        const since = lastCheck ? new Date(lastCheck) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const unreadCount = await prisma.message.count({
+            where: {
+                createdAt: { gt: since },
+                NOT: { userId: userId },
+                OR: [
+                    { receiverId: userId },
+                    { groupId: { not: null }, group: { members: { some: { id: userId } } } }
+                ]
+            }
+        });
+
+        res.json({ status: 'success', data: { unreadCount } });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Error checking unread messages' });
+    }
+};

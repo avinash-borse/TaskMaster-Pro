@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getMessages, sendMessage, getOnlineUsers, getGroups, createGroup } from '../controllers/chatController.js';
+import { getMessages, sendMessage, getOnlineUsers, getGroups, createGroup, getUnreadCount } from '../controllers/chatController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
@@ -11,5 +11,6 @@ router.post('/messages', sendMessage);
 router.get('/online', getOnlineUsers);
 router.get('/groups', getGroups);
 router.post('/groups', createGroup);
+router.get('/unread', getUnreadCount);
 
 export default router;

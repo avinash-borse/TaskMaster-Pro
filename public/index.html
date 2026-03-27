@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=2.9">
+    <link rel="stylesheet" href="style.css?v=3.7">
 </head>
 <body>
     <div id="toast-container"></div>
@@ -40,7 +40,10 @@
                     </div>
                     <div class="drawer-section">
                         <label>Collaboration</label>
-                        <button class="drawer-item" id="m-chat-toggle"><i class="fa-solid fa-comments"></i> Team Chat</button>
+                         <button class="drawer-item" id="m-chat-toggle">
+                             <i class="fa-solid fa-comments"></i> Team Chat
+                             <span class="chat-badge hidden" id="m-chat-badge"></span>
+                         </button>
                     </div>
                     <div class="drawer-section">
                         <label>Workspace</label>
@@ -70,10 +73,10 @@
             <i class="fas fa-bell"></i>
             <span class="notif-badge hidden" id="notif-count">0</span>
           </button>
-          
-          <button class="btn-icon" id="chat-toggle-btn" title="Team Chat">
-            <i class="fas fa-comments"></i>
-          </button>
+                    <button class="btn-icon" id="chat-toggle-btn" title="Team Chat" style="position:relative">
+             <i class="fas fa-comments"></i>
+             <span class="chat-badge hidden" id="chat-badge"></span>
+           </button>
 
           <div class="user-pill" id="user-pill-btn">
             <div id="user-avatar" class="avatar-sm">U</div>
@@ -461,6 +464,6 @@
   </div>
 
 
-    <script src="app.js"></script>
+    <script src="app.js?v=3.7"></script>
 </body>
 </html>

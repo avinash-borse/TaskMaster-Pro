@@ -42,7 +42,9 @@ body {
   overflow-x: hidden;
 }
 
+/* Utility classes */
 .hidden { display: none !important; }
+.mobile-only { display: none; } /* Hidden everywhere by default */
 
 .light-theme {
   --bg: #f8fafc;
@@ -482,7 +484,8 @@ body {
   .header { position: sticky; top: 0; z-index: 1000; }
   .header-inner { padding: 0 1rem; gap: 1rem; }
   .header-right { gap: 0.5rem; }
-  .mobile-only { display: flex; }
+  body.logged-in .mobile-only { display: flex; } /* Show hamburger only when logged in on mobile */
+
   .view-toggle, #workspace-btn, #chat-toggle-btn { display: none !important; }
   
   .kanban-board { grid-template-columns: 1fr; }
@@ -816,14 +819,25 @@ body {
   transition: var(--transition);
 }
 .notif-btn:hover { border-color: var(--primary); color: var(--primary); }
-.notif-badge {
-  position: absolute; top: -4px; right: -4px;
-  background: var(--red); color: #fff; border-radius: 10px;
-  font-size: 0.65rem; font-weight: 700; min-width: 16px; height: 16px;
-  display: flex; align-items: center; justify-content: center; padding: 0 3px;
+.notif-badge, .chat-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: var(--danger);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 10px rgba(255, 69, 58, 0.4);
 }
-
-/* ===== DROPDOWN PANELS ===== */
+.chat-badge { top: 2px; right: 2px; width: 10px; height: 10px; border-width: 1px; }
+.drawer-item .chat-badge { position: relative; top: 0; right: 0; margin-left: auto; width: 8px; height: 8px; border: none; }
 .dropdown-panel {
   position: fixed; top: 68px; right: 2rem;
   background: var(--surface); border: 1px solid var(--border);

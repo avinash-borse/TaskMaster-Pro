@@ -13,6 +13,8 @@ let currentPage = 1;
 let totalPages = 1;
 const taskLimit = 20;
 let lastMessageId = null;
+let lastChatCheck = new Date().toISOString();
+let syncInterval;
 
 // ====================== INIT ======================
 document.addEventListener('DOMContentLoaded', () => {
@@ -101,18 +103,19 @@ function logout() {
   clearInterval(notifInterval);
   clearInterval(chatInterval);
   clearInterval(onlineInterval);
-  localStorage.clear(); token = null; currentUser = null; tasks = []; workspaces = [];
+  clearInterval(syncInterval);
+  lastChatCheck = new Date().toISOString();
+localStorage.clear(); token = null; currentUser = null; tasks = []; workspaces = [];
   showAuth(); toast('Logged out. See you soon!', 'info');
 }
 
 // ====================== PAGE ======================
 function showAuth() {
+  document.body.classList.remove('logged-in'); // CSS hides .mobile-only
   document.getElementById('auth-page').classList.remove('hidden');
   document.getElementById('app-page').classList.add('hidden');
   document.getElementById('header-right').classList.add('hidden');
   document.getElementById('logout-btn')?.classList.add('hidden');
-  document.getElementById('mobile-menu-toggle')?.classList.add('hidden');
-  
   // Immersive UI Cleanse
   document.getElementById('chat-panel')?.classList.add('hidden');
   document.getElementById('mobile-nav-drawer')?.classList.add('hidden');
@@ -120,11 +123,11 @@ function showAuth() {
   document.getElementById('profile-modal')?.classList.add('hidden');
 }
 function showApp() {
+  document.body.classList.add('logged-in'); // CSS shows .mobile-only on mobile
   document.getElementById('auth-page').classList.add('hidden');
   document.getElementById('app-page').classList.remove('hidden');
   document.getElementById('header-right').classList.remove('hidden');
   document.getElementById('logout-btn')?.classList.remove('hidden');
-  document.getElementById('mobile-menu-toggle')?.classList.remove('hidden');
   const u = currentUser?.username || 'U';
   document.getElementById('username-display').textContent = u;
   const av = document.getElementById('user-avatar');
@@ -134,7 +137,9 @@ function showApp() {
   startReminders();
   updateOnlineMembers(); // Initial load
   if (!onlineInterval) onlineInterval = setInterval(updateOnlineMembers, 10000); // Global presence sync
+  setInterval(checkChatUnread, 5000); // Check for new messages faster
   fetchNotifications();
+  if (!syncInterval) syncInterval = setInterval(loadAll, 30000); // 30s Board Heartbeat
 
 }
 
@@ -872,9 +877,13 @@ async function loadMessages() {
             container.innerHTML = '';
         }
         
-        msgs.forEach(m => appendChatMessage(m));
+        msgs.forEach(m => {
+            if (!document.getElementById(`msg-${m.id}`)) {
+                appendChatMessage(m);
+            }
+        });
         if (isAtBottom) container.scrollTop = container.scrollHeight;
-        if (msgs.length > 0) lastMessageId = msgs[msgs.length-1].id;
+        if (msgs.length > 0) lastMessageId = msgs[msgs.length-1].createdAt;
     }
 }
 
@@ -882,6 +891,7 @@ function appendChatMessage(m) {
     const container = document.getElementById('chat-messages');
     const isMe = m.user.id === (currentUser?.id);
     const div = document.createElement('div');
+    div.id = `msg-${m.id}`;
     div.className = `chat-msg ${isMe ? 'me' : ''}`;
     
     let avatarStyle = m.user.avatarColor ? `style="background:${m.user.avatarColor}"` : '';
@@ -899,9 +909,11 @@ function appendChatMessage(m) {
 async function onSendMessage(e) {
     e.preventDefault();
     const input = document.getElementById('chat-input');
+    const btn = document.querySelector('.chat-input-area button');
     const content = input.value.trim();
-    if (!content) return;
+    if (!content || btn.disabled) return;
 
+    btn.disabled = true;
     const body = { content, type: currentChatType };
     if (currentChatId) {
         if (currentChatType === 'private') body.receiverId = currentChatId;
@@ -909,6 +921,7 @@ async function onSendMessage(e) {
     }
 
     const res = await authFetch('/chat/messages', 'POST', body);
+    btn.disabled = false;
     if (res?.status === 'success') {
         input.value = '';
         loadMessages();
@@ -944,14 +957,28 @@ function toggleChat() {
     panel.classList.toggle('hidden');
     overlay.classList.toggle('hidden');
     if (!panel.classList.contains('hidden')) {
+        // Clear badges
+        lastChatCheck = new Date().toISOString();
+        document.getElementById('chat-badge').classList.add('hidden');
+        document.getElementById('m-chat-badge').classList.add('hidden');
+        
         loadMessages();
         updateOnlineMembers();
-        fetchGroups(); // Added direct call
+        fetchGroups(); 
         if (!chatInterval) chatInterval = setInterval(loadMessages, 3000);
         if (!onlineInterval) onlineInterval = setInterval(updateOnlineMembers, 10000);
     } else {
         clearInterval(chatInterval); chatInterval = null;
         clearInterval(onlineInterval); onlineInterval = null;
+    }
+}
+
+async function checkChatUnread() {
+    if (!token || !document.getElementById('chat-panel').classList.contains('hidden')) return;
+    const res = await authFetch(`/chat/unread?lastCheck=${lastChatCheck}`);
+    if (res?.status === 'success' && res.data.unreadCount > 0) {
+        document.getElementById('chat-badge').classList.remove('hidden');
+        document.getElementById('m-chat-badge').classList.remove('hidden');
     }
 }
 
@@ -1261,7 +1288,4 @@ document.querySelectorAll('.drawer-item').forEach(item => {
     };
 });
 
-// App Entry Point
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-});
+
