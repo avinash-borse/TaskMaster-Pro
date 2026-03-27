@@ -7,12 +7,11 @@ services:
     startCommand: npx prisma migrate deploy && node dist/server.js
     envVars:
       - key: DATABASE_URL
-        value: "file:./prisma/dev.db" # SQLite for testing. Use PostgreSQL for production data.
+        sync: false # You will provide this from Supabase
       - key: JWT_SECRET
         generateValue: true
       - key: PORT
         value: 3000
       - key: NODE_ENV
         value: production
-    # Render Free Tier health check
     healthCheckPath: /api/v1/tasks/summary
