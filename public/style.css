@@ -482,7 +482,7 @@ body {
   .header { position: sticky; top: 0; z-index: 1000; }
   .header-inner { padding: 0 1rem; gap: 1rem; }
   .header-right { gap: 0.5rem; }
-  .mobile-only { display: flex !important; }
+  .mobile-only { display: flex; }
   .view-toggle, #workspace-btn, #chat-toggle-btn { display: none !important; }
   
   .kanban-board { grid-template-columns: 1fr; }

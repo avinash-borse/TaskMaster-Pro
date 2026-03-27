@@ -110,11 +110,21 @@ function showAuth() {
   document.getElementById('auth-page').classList.remove('hidden');
   document.getElementById('app-page').classList.add('hidden');
   document.getElementById('header-right').classList.add('hidden');
+  document.getElementById('logout-btn')?.classList.add('hidden');
+  document.getElementById('mobile-menu-toggle')?.classList.add('hidden');
+  
+  // Immersive UI Cleanse
+  document.getElementById('chat-panel')?.classList.add('hidden');
+  document.getElementById('mobile-nav-drawer')?.classList.add('hidden');
+  document.getElementById('workspace-menu')?.classList.add('hidden');
+  document.getElementById('profile-modal')?.classList.add('hidden');
 }
 function showApp() {
   document.getElementById('auth-page').classList.add('hidden');
   document.getElementById('app-page').classList.remove('hidden');
   document.getElementById('header-right').classList.remove('hidden');
+  document.getElementById('logout-btn')?.classList.remove('hidden');
+  document.getElementById('mobile-menu-toggle')?.classList.remove('hidden');
   const u = currentUser?.username || 'U';
   document.getElementById('username-display').textContent = u;
   const av = document.getElementById('user-avatar');
