@@ -4,14 +4,13 @@ import app from './app.js';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
-// Verify Prisma connection (SQLite check is fast)
 prisma.$connect()
   .then(() => {
-    console.log('✅ SQLite Database Ready (Prisma)');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log('✅ PostgreSQL Database Ready (Supabase)');
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server fully live on port ${PORT}`);
     });
   })
   .catch((err: any) => {
