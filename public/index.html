@@ -36,11 +36,16 @@
                     <span id="workspace-name-display">Personal</span>
                     <i class="fa-solid fa-chevron-down" style="font-size:0.7rem"></i>
                 </button>
-                <div id="notif-btn" class="notif-btn" title="Reminders">
-                    <i class="fa-solid fa-bell"></i>
-                    <span id="notif-badge" class="notif-badge hidden">0</span>
-                </div>
-                <div class="user-pill">
+                <button class="notif-btn" id="notif-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notif-badge hidden" id="notif-count">0</span>
+          </button>
+          
+          <button class="btn-icon" id="chat-toggle-btn" title="Team Chat">
+            <i class="fas fa-comments"></i>
+          </button>
+
+          <div class="user-pill">
                     <div id="user-avatar" class="avatar-sm">U</div>
                     <span id="username-display">User</span>
                 </div>
@@ -157,6 +162,13 @@
                 <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
             </div>
             <div class="cal-grid" id="cal-grid"></div>
+        </section>
+
+        <!-- PAGINATION BAR -->
+        <section class="pagination-bar">
+            <button id="prev-page" class="btn-icon" title="Previous Page"><i class="fa-solid fa-chevron-left"></i></button>
+            <div id="page-info" class="page-info">Page 1 of 1</div>
+            <button id="next-page" class="btn-icon" title="Next Page"><i class="fa-solid fa-chevron-right"></i></button>
         </section>
     </main>
 
@@ -296,6 +308,35 @@
             <div id="gm-body" style="padding:1.5rem"></div>
         </div>
     </div>
+
+  <!-- ===== TEAM CHAT PANEL ===== -->
+  <div class="chat-overlay hidden" id="chat-overlay"></div>
+  <div class="chat-panel hidden" id="chat-panel">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <h3>Team Discussion</h3>
+        <p><span id="online-count">1</span> person online</p>
+      </div>
+      <button class="btn-icon" id="chat-close-btn"><i class="fas fa-times"></i></button>
+    </div>
+    
+    <div class="chat-online-strip" id="online-users-list">
+      <!-- Online users will appear here -->
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+      <!-- Messages will appear here -->
+    </div>
+
+    <div class="chat-input-area">
+      <form id="chat-form">
+        <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+        <button type="submit" class="btn-primary">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+  </div>
 
     <script src="app.js"></script>
 </body>

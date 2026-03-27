@@ -28,6 +28,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     if (!user) throw new AppError('Unauthorized: User no longer exists', 401);
     
     req.user = user;
+
+    // Update lastActive timestamp on each hit (heartbeat)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastActive: new Date() }
+    }).catch(err => console.error('Heartbeat update failed', err));
+
     next();
   } catch (err: any) {
     next(new AppError(err.message || 'Authentication failed', 401));

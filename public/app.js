@@ -7,8 +7,12 @@ let sortBy = 'createdAt';
 let draggedTaskId = null;
 let detailTaskId = null;
 let calMonth = new Date().getMonth(), calYear = new Date().getFullYear();
-let notifInterval = null;
+let notifInterval = null, chatInterval = null, onlineInterval = null;
 const remindersSent = new Set();
+let currentPage = 1;
+let totalPages = 1;
+const taskLimit = 20;
+let lastMessageId = null;
 
 // ====================== INIT ======================
 document.addEventListener('DOMContentLoaded', () => {
@@ -48,6 +52,13 @@ function bindEvents() {
   document.getElementById('notif-btn').onclick = (e) => { e.stopPropagation(); togglePanel('notif-panel'); loadUpcoming(); };
   document.getElementById('cal-prev').onclick = () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); };
   document.getElementById('cal-next').onclick = () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); };
+  
+  // Chat events
+  document.getElementById('chat-toggle-btn').onclick = (e) => { e.stopPropagation(); toggleChat(true); };
+  document.getElementById('chat-close-btn').onclick = () => toggleChat(false);
+  document.getElementById('chat-overlay').onclick = () => toggleChat(false);
+  document.getElementById('chat-form').onsubmit = onSendMessage;
+
   document.addEventListener('click', () => closeAllPanels());
 }
 
@@ -87,6 +98,8 @@ async function onRegister(e) {
 
 function logout() {
   clearInterval(notifInterval);
+  clearInterval(chatInterval);
+  clearInterval(onlineInterval);
   localStorage.clear(); token = null; currentUser = null; tasks = []; workspaces = [];
   showAuth(); toast('Logged out. See you soon!', 'info');
 }
@@ -110,6 +123,7 @@ function showApp() {
   commentAv.textContent = u[0].toUpperCase();
   commentAv.style.background = currentUser?.avatarColor || '#7c3aed';
   startReminders();
+  startChatSync();
 }
 
 // ====================== DATA ======================
@@ -118,10 +132,33 @@ async function loadAll() {
 }
 
 async function fetchTasks() {
-  let url = '/tasks?limit=500';
+  let url = `/tasks?page=${currentPage}&limit=${taskLimit}`;
   if (currentWorkspaceId) url += `&workspaceId=${currentWorkspaceId}`;
   const res = await authFetch(url);
-  if (res?.status === 'success') { tasks = res.data.tasks; renderAll(); }
+  if (res?.status === 'success') {
+    tasks = res.data.tasks;
+    totalPages = res.data.pagination.totalPages || 1;
+    renderAll();
+    renderPagination();
+  }
+}
+
+function renderPagination() {
+  const info = document.getElementById('page-info');
+  const prevBtn = document.getElementById('prev-page');
+  const nextBtn = document.getElementById('next-page');
+  if (!info || !prevBtn || !nextBtn) return;
+
+  info.textContent = `Page ${currentPage} of ${totalPages || 1}`;
+  prevBtn.disabled = currentPage <= 1;
+  nextBtn.disabled = currentPage >= totalPages;
+}
+
+function changePage(dir) {
+  const newPage = currentPage + dir;
+  if (newPage < 1 || newPage > totalPages) return;
+  currentPage = newPage;
+  fetchTasks();
 }
 async function fetchStats() {
   const res = await authFetch('/tasks/summary');
@@ -769,10 +806,83 @@ async function quickComplete(id, currentStatus) {
 // ====================== PANELS ======================
 function togglePanel(id) {
   const panel = document.getElementById(id);
+  if (!panel) return;
   const wasHidden = panel.classList.contains('hidden');
   closeAllPanels();
   if (wasHidden) panel.classList.remove('hidden');
 }
+
+// ====================== TEAM CHAT ======================
+function toggleChat(show) {
+  const p = document.getElementById('chat-panel');
+  const o = document.getElementById('chat-overlay');
+  if (show) {
+    p.classList.remove('hidden'); o.classList.remove('hidden');
+    fetchMessages(true); fetchOnlineUsers();
+  } else {
+    p.classList.add('hidden'); o.classList.add('hidden');
+  }
+}
+
+function startChatSync() {
+  fetchOnlineUsers();
+  onlineInterval = setInterval(fetchOnlineUsers, 30000); // Online every 30s
+  chatInterval = setInterval(() => {
+    if (!document.getElementById('chat-panel').classList.contains('hidden')) {
+      fetchMessages();
+    }
+  }, 4000); // Chat every 4s when panel is open
+}
+
+async function fetchOnlineUsers() {
+  const res = await authFetch('/chat/online');
+  if (res) {
+    const list = document.getElementById('online-users-list');
+    const count = document.getElementById('online-count');
+    count.textContent = res.length;
+    list.innerHTML = res.map(u => `
+      <div class="chat-online-user">
+        <div class="avatar-sm online" style="background:${u.avatarColor || '#7c3aed'}">${u.username[0].toUpperCase()}</div>
+        <span>${escHtml(u.username)}</span>
+      </div>`).join('');
+    
+    // Also update global avatars in the UI
+    const onlineIds = new Set(res.map(u => u.id));
+    document.querySelectorAll('.avatar-sm[data-user-id]').forEach(av => {
+      av.classList.toggle('online', onlineIds.has(av.dataset.user-id));
+    });
+  }
+}
+
+async function fetchMessages(scroll = false) {
+  const res = await authFetch('/chat/messages');
+  if (res) {
+    const container = document.getElementById('chat-messages');
+    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+    
+    container.innerHTML = res.map(m => `
+      <div class="msg-item ${m.userId === currentUser.id ? 'self' : ''}">
+        <div class="avatar-sm" style="background:${m.user.avatarColor || '#7c3aed'}">${m.user.username[0].toUpperCase()}</div>
+        <div class="msg-content">
+          <div class="msg-info"><strong>${escHtml(m.user.username)}</strong> <span>${new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>
+          <div class="msg-bubble">${escHtml(m.content)}</div>
+        </div>
+      </div>`).join('');
+    
+    if (scroll || isAtBottom) container.scrollTop = container.scrollHeight;
+  }
+}
+
+async function onSendMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById('chat-input');
+  const content = input.value.trim();
+  if (!content) return;
+  input.value = '';
+  const res = await authFetch('/chat/messages', 'POST', { content });
+  if (res) fetchMessages(true);
+}
+
 function closeAllPanels() {
   document.getElementById('workspace-panel').classList.add('hidden');
   document.getElementById('notif-panel').classList.add('hidden');
@@ -830,6 +940,11 @@ window.openCreateWorkspace = openCreateWorkspace; window.createWorkspace = creat
 window.openInvite = openInvite; window.inviteMember = inviteMember; window.switchWorkspace = switchWorkspace;
 window.closeGenericModal = closeGenericModal;
 window.selectAssignee = selectAssignee; window.clearAssignee = clearAssignee;
+window.toggleChat = toggleChat; window.onSendMessage = onSendMessage;
 
 // Init modal assignee search after DOM is ready
 initAssigneeSearch();
+
+// Pagination Listeners
+document.getElementById('prev-page')?.addEventListener('click', () => changePage(-1));
+document.getElementById('next-page')?.addEventListener('click', () => changePage(1));

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import taskRoutes from './routes/taskRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import workspaceRoutes from './routes/workspaceRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 import { errorHandler } from './utils/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +29,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/workspaces', workspaceRoutes);
+app.use('/api/v1/chat', chatRoutes);
 
 // SPA fallback - serve index.html for all non-API routes
 app.get(/^(?!\/api).*/, (req, res) => {
