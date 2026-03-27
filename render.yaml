@@ -14,4 +14,4 @@ services:
         value: 3000
       - key: NODE_ENV
         value: production
-    healthCheckPath: /api/v1/tasks/summary
+    healthCheckPath: /
