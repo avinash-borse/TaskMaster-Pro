@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: taskmaster-pro
+    env: node
+    plan: free
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/server.js
+    staticPublishNum: 1
+    envVars:
+      - key: DATABASE_URL
+        value: "file:./prisma/dev.db" # Using SQLite for zero-cost free tier
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
