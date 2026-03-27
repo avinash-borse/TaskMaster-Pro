@@ -1,88 +1,91 @@
-# Task Management System API
+# 🚀 TaskMaster Pro: Premium Full-Stack Management Suite
 
-A simple, robust Task Management System built with Node.js, TypeScript, Express, and MongoDB. Features secure JWT authentication, CRUD operations for tasks, advanced filtering, pagination, and statistics.
+TaskMaster Pro is a high-performance, full-stack Task Management System designed for both personal productivity and team collaboration. It features a modern **Glassmorphism UI**, a dynamic **Kanban Board**, and a scalable **Node.js/TypeScript** backend.
 
-## Features
+---
 
-- **Authentication**: Secure registration and login using JWT.
-- **Task Management**: Create, view, update, and delete tasks.
-- **Advanced Filtering**: Filter tasks by status, priority, and overdue status.
-- **Pagination & Sorting**: Support for large task lists with customizable sorting.
-- **Statistics**: Summary of tasks (total, completed, pending, overdue).
-- **Security**: Password hashing with bcrypt, security headers with helmet, and CORS support.
+## ✨ Key Features
 
-## Tech Stack
+### 🎨 Elite Interface (Frontend)
+- **Dynamic Views**: Switch between a drag-and-drop **Kanban Board**, a classic **Task List**, and a full **Calendar View**.
+- **Modern Aesthetics**: Premium Dark Mode with glass effects, smooth transitions, and responsive design.
+- **Micro-interactions**: Real-time status updates via drag-and-drop and one-click actions.
+- **Activity Feed**: Live history of all changes made to a task (edits, moves, assignments).
+- **Communication**: Threaded comment sections on every task with user avatars.
+- **File Management**: Securely upload images, PDFs, and documents directly to tasks.
+- **Smart Reminders**: Desktop browser notifications for tasks due within 24 hours.
 
-- **Backend**: Node.js & Express
-- **Language**: TypeScript
-- **Database**: SQLite (Prisma)
-- **Validation**: Zod
-- **Auth**: JSON Web Tokens (JWT) & bcryptjs
+### 🤝 Team Collaboration
+- **Global User Search**: Assign tasks to *any* registered user instantly by searching their name or email. No setup required!
+- **Workspaces**: Create dedicated team spaces, invite members with roles (Owner/Admin/Member), and move tasks between Personal and Team areas.
+- **Live Assignment**: Real-time type-ahead search for assigning tasks to colleagues.
 
-## Prerequisites
+### ⚙️ Scalable Backend (API)
+- **Robust Tech**: Built with **Node.js**, **Express**, and **TypeScript**.
+- **API Friendly**: Fully documented REST API (`/api/v1`) with consistent JSON envelopes. [See API Reference](./api_reference.md).
+- **Advanced Pagination**: Optimized for thousands of tasks with page-based loading (20 tasks per page).
+- **Database Power**: Driven by **Prisma ORM** and **PostgreSQL (Supabase)** for persistent, production-grade data.
+- **Validation**: Strict input validation using **Zod**.
+- **Auth**: Secure JWT-based authentication with password hashing and protected routes.
 
-- [Node.js](https://nodejs.org/) (v16.x or higher)
-- No external database required (uses local SQLite file)
+---
 
-## Getting Started
+## 🛠️ Tech Stack
 
-### 1. Clone the repository
+- **Frontend**: Vanilla HTML5, CSS3 (Modern Flexbox/Grid), JavaScript (ES6+)
+- **Backend**: Node.js & Express.js
+- **Language**: TypeScript (Strict Mode)
+- **ORM**: Prisma
+- **Database**: PostgreSQL (Supabase ready) / SQLite (Local dev)
+- **Authentication**: JSON Web Tokens (JWT) & Bcrypt
+- **File Handling**: Multer (Local static serving)
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone & Install
 ```bash
-git clone <your-repo-url>
+git clone git@github.com:avinash-borse/TaskMaster-Pro.git
 cd task-management-system
-```
-
-### 2. Install dependencies
-```bash
 npm install
 ```
 
-### 3. Configure Environment Variables
-Create a `.env` file in the root directory:
-```env
-PORT=3000
-MONGODB_URI=mongodb://localhost:27017/task-management-db
-JWT_SECRET=your_long_random_secret_string
-NODE_ENV=development
-JWT_EXPIRES_IN=1d
-CORS_ORIGIN=*
+### 2. Configure Environment
+Create a `.env` file from the template:
+```bash
+cp .env.example .env
+```
+Update your `DATABASE_URL` (Supabase link) and your `JWT_SECRET`.
+
+### 3. Initialize Database
+```bash
+npx prisma generate
+npx prisma db push
 ```
 
-### 4. Run the application
-**Development Mode:**
+### 4. Run Locally
 ```bash
 npm run dev
 ```
-**Production Build:**
-```bash
-npm run build
-npm start
-```
+Open `http://localhost:3000` to see the full application!
 
-## API Documentation
+---
 
-All routes are prefixed with `/api/v1`.
+## 🌐 Deployment (One-Click)
 
-### Authentication
-- `POST /auth/register`: Create a new user.
-- `POST /auth/login`: Authenticate and get a JWT token.
+The project is pre-configured for **Render** via `render.yaml`:
+1. Push this repo to your GitHub.
+2. Go to **Render Dashboard** → **New** → **Blueprint**.
+3. Select this repository and provide your **Supabase DATABASE_URL**.
+4. Render will automatically build the TS files and deploy your live site!
 
-### Tasks (Protected - Requires Bearer Token)
-- `POST /tasks`: Create a new task.
-- `GET /tasks`: List tasks with query params (`status`, `priority`, `overdue`, `page`, `limit`, `sortBy`, `sortOrder`).
-- `GET /tasks/summary`: Get statistics of your tasks.
-- `GET /tasks/:id`: Get a specific task.
-- `PUT /tasks/:id`: Replace a task.
-- `PATCH /tasks/:id`: Update specific fields.
-- `DELETE /tasks/:id`: Delete a task.
+---
 
-#### Filtration Example:
-`GET /tasks?status=pending&priority=high&overdue=true`
+## 📜 API Documentation
+For a detailed guide on all backend endpoints (Auth, Tasks, Comments, Files), see our [API Reference Guide](./api_reference.md).
 
-## Deployment
+---
 
-The application is ready for deployment on platforms like Render, Railway, or Vercel. 
-1. Push to GitHub.
-2. Connect your repository to the hosting platform.
-3. Configure the environment variables in the platform dashboard.
-4. Ensure MongoDB is accessible (e.g., using MongoDB Atlas).
+## 📄 License
+This project is open-source and ready for customization.
