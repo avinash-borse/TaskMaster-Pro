@@ -23,6 +23,8 @@ model User {
   files           TaskFile[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+
+  @@map("users")
 }
 
 model Workspace {
@@ -35,6 +37,8 @@ model Workspace {
   tasks       Task[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+
+  @@map("workspaces")
 }
 
 model WorkspaceMember {
@@ -47,6 +51,7 @@ model WorkspaceMember {
   createdAt   DateTime  @default(now())
 
   @@unique([workspaceId, userId])
+  @@map("workspace_members")
 }
 
 model Task {
@@ -68,6 +73,8 @@ model Task {
   files       TaskFile[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+
+  @@map("tasks")
 }
 
 model Comment {
@@ -79,6 +86,8 @@ model Comment {
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("comments")
 }
 
 model ActivityLog {
@@ -90,6 +99,8 @@ model ActivityLog {
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+
+  @@map("activity_logs")
 }
 
 model TaskFile {
@@ -103,4 +114,6 @@ model TaskFile {
   task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user         User     @relation(fields: [uploadedBy], references: [id])
   createdAt    DateTime @default(now())
+
+  @@map("task_files")
 }
