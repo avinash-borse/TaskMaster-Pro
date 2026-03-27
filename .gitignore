@@ -1,0 +1,31 @@
+node_modules/
+npm-debug.log*
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Prisma generated client
+/src/generated/prisma
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Database files (SQLite — schema kept, data excluded)
+prisma/dev.db
+prisma/dev.db-journal
+prisma/*.db-shm
+prisma/*.db-wal
+
+# User uploads (keep folder structure, not files)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
