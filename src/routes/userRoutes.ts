@@ -1,11 +1,17 @@
 import { Router } from 'express';
-import * as userController from '../controllers/userController.js';
+import {
+  register, login, searchUsers,
+  updateProfile, getNotifications, markNotificationsRead
+} from '../controllers/userController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
-router.post('/register', userController.register);
-router.post('/login', userController.login);
-router.get('/search', authenticate, userController.searchUsers);
+router.post('/register', register);
+router.post('/login', login);
+router.get('/search', authenticate, searchUsers);
+router.put('/profile', authenticate, updateProfile);
+router.get('/notifications', authenticate, getNotifications);
+router.patch('/notifications/read', authenticate, markNotificationsRead);
 
 export default router;

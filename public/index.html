@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.6">
 </head>
 <body>
     <div id="toast-container"></div>
@@ -18,9 +18,39 @@
     <nav class="header">
         <div class="header-inner">
             <div class="logo-wrap">
+                <button id="mobile-menu-toggle" class="btn-icon mobile-only" title="Menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
                 <div class="logo-icon"><i class="fa-solid fa-layer-group"></i></div>
                 <span class="logo-text">TaskMaster <span>Pro</span></span>
             </div>
+            
+            <!-- MOBILE DRAWER -->
+            <div id="mobile-nav-drawer" class="mobile-nav-drawer hidden">
+                <div class="drawer-header">
+                    <h3>Menu</h3>
+                    <button id="close-drawer-btn" class="btn-icon"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="drawer-content">
+                    <div class="drawer-section">
+                        <label>Views</label>
+                        <button class="drawer-item active" id="m-view-kanban"><i class="fa-solid fa-columns"></i> Kanban Board</button>
+                        <button class="drawer-item" id="m-view-list"><i class="fa-solid fa-list"></i> List View</button>
+                        <button class="drawer-item" id="m-view-calendar"><i class="fa-solid fa-calendar-days"></i> Calendar</button>
+                    </div>
+                    <div class="drawer-section">
+                        <label>Collaboration</label>
+                        <button class="drawer-item" id="m-chat-toggle"><i class="fa-solid fa-comments"></i> Team Chat</button>
+                    </div>
+                    <div class="drawer-section">
+                        <label>Workspace</label>
+                        <button class="drawer-item" id="m-workspace-btn"><i class="fa-solid fa-building"></i> <span id="m-workspace-name">Personal</span></button>
+                    </div>
+                    <div class="drawer-divider"></div>
+                    <button class="drawer-item danger" id="m-logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+                </div>
+            </div>
+
             <div id="header-right" class="header-right hidden">
                 <div class="header-search">
                     <i class="fa-solid fa-search"></i>
@@ -45,10 +75,10 @@
             <i class="fas fa-comments"></i>
           </button>
 
-          <div class="user-pill">
-                    <div id="user-avatar" class="avatar-sm">U</div>
-                    <span id="username-display">User</span>
-                </div>
+          <div class="user-pill" id="user-pill-btn">
+            <div id="user-avatar" class="avatar-sm">U</div>
+            <span id="username-display">User</span>
+          </div>      </div>
                 <button id="logout-btn" class="btn-icon" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
             </div>
         </div>
@@ -309,34 +339,127 @@
         </div>
     </div>
 
-  <!-- ===== TEAM CHAT PANEL ===== -->
-  <div class="chat-overlay hidden" id="chat-overlay"></div>
-  <div class="chat-panel hidden" id="chat-panel">
-    <div class="chat-header">
-      <div class="chat-header-info">
-        <h3>Team Discussion</h3>
-        <p><span id="online-count">1</span> person online</p>
+  <!-- ===== NOTIFICATION PANEL ===== -->
+  <div class="dropdown-panel hidden" id="notif-panel">
+    <div class="panel-header">
+      <h4>Notifications</h4>
+      <button class="text-link" onclick="markAllRead()">Mark all as read</button>
+    </div>
+    <div class="notif-list" id="notif-list">
+      <!-- Notifications will appear here -->
+    </div>
+  </div>
+
+  <!-- ===== PROFILE MODAL ===== -->
+  <div class="modal hidden" id="profile-modal" onclick="handleProfileBackdropClick(event)">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>My Profile</h3>
+        <button class="btn-icon" onclick="closeProfileModal()"><i class="fas fa-times"></i></button>
       </div>
-      <button class="btn-icon" id="chat-close-btn"><i class="fas fa-times"></i></button>
-    </div>
-    
-    <div class="chat-online-strip" id="online-users-list">
-      <!-- Online users will appear here -->
-    </div>
+      <form id="profile-form">
+        <div class="profile-preview-section">
+          <div id="profile-avatar-preview" class="avatar-lg">U</div>
+          <div class="profile-preview-info">
+            <h4 id="profile-username-label">Username</h4>
+            <p id="profile-email-label">user@example.com</p>
+          </div>
+        </div>
 
-    <div class="chat-messages" id="chat-messages">
-      <!-- Messages will appear here -->
-    </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Avatar Color</label>
+            <div class="color-grid">
+              <div class="color-opt" style="background:#7c3aed" onclick="setProfileColor('#7c3aed')"></div>
+              <div class="color-opt" style="background:#3b82f6" onclick="setProfileColor('#3b82f6')"></div>
+              <div class="color-opt" style="background:#10b981" onclick="setProfileColor('#10b981')"></div>
+              <div class="color-opt" style="background:#f59e0b" onclick="setProfileColor('#f59e0b')"></div>
+              <div class="color-opt" style="background:#ef4444" onclick="setProfileColor('#ef4444')"></div>
+              <div class="color-opt" style="background:#ec4899" onclick="setProfileColor('#ec4899')"></div>
+            </div>
+            <input type="hidden" id="profile-avatar-color">
+          </div>
+          
+          <div class="field">
+            <label>Interface Theme</label>
+            <div class="theme-toggle">
+              <button type="button" class="theme-btn" id="theme-dark-btn" onclick="setAppTheme('dark')">
+                <i class="fas fa-moon"></i> Dark
+              </button>
+              <button type="button" class="theme-btn" id="theme-light-btn" onclick="setAppTheme('light')">
+                <i class="fas fa-sun"></i> Light
+              </button>
+            </div>
+          </div>
+        </div>
 
-    <div class="chat-input-area">
-      <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
-        <button type="submit" class="btn-primary">
-          <i class="fas fa-paper-plane"></i>
-        </button>
+        <hr class="modal-divider">
+        
+        <div class="field">
+          <label>Update Password (Optional)</label>
+          <input type="password" id="profile-current-password" placeholder="Current Password">
+          <input type="password" id="profile-new-password" placeholder="New Password" style="margin-top:10px">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" onclick="closeProfileModal()">Cancel</button>
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
       </form>
     </div>
   </div>
+
+  <!-- ===== TEAM CHAT PANEL ===== -->
+  <div class="chat-overlay hidden" id="chat-overlay"></div>
+  <div class="chat-panel hidden" id="chat-panel">
+    <div class="chat-main-container">
+      <!-- Chat Sidebar (Select who to chat with) -->
+      <div class="chat-rooms-sidebar">
+        <div class="sidebar-header">
+          <h5>Chats</h5>
+          <button class="btn-icon-sm" onclick="openCreateGroupModal()" title="Create Group"><i class="fas fa-plus-circle"></i></button>
+        </div>
+        <div class="rooms-list">
+            <div class="room-item active" id="room-global" onclick="switchChat('global')">
+                <div class="room-icon global"><i class="fas fa-users"></i></div>
+                <span>Team Hub</span>
+            </div>
+            <div id="groups-list-container">
+                <!-- Groups will appear here -->
+            </div>
+            <div class="sidebar-label">Online Members</div>
+            <div id="online-users-rooms" class="online-rooms">
+                <!-- Direct messages rooms will appear here -->
+            </div>
+        </div>
+      </div>
+
+      <!-- Active Chat Area -->
+      <div class="chat-content-area">
+        <div class="chat-header">
+          <div class="chat-header-info">
+            <h3 id="active-chat-name">Team Discussion</h3>
+            <p id="active-chat-status">Broadcasting to everyone</p>
+          </div>
+          <button class="btn-icon" id="chat-close-btn"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+          <!-- Messages will appear here -->
+        </div>
+
+        <div class="chat-input-area">
+          <form id="chat-form">
+            <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" class="btn-primary">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
     <script src="app.js"></script>
 </body>

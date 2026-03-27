@@ -50,9 +50,10 @@ function bindEvents() {
   document.getElementById('search-input').oninput = (e) => { filters.search = e.target.value.toLowerCase(); renderAll(); };
   document.getElementById('workspace-btn').onclick = (e) => { e.stopPropagation(); togglePanel('workspace-panel'); };
   document.getElementById('notif-btn').onclick = (e) => { e.stopPropagation(); togglePanel('notif-panel'); loadUpcoming(); };
-  document.getElementById('cal-prev').onclick = () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); };
   document.getElementById('cal-next').onclick = () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); };
-  
+  document.getElementById('user-pill-btn').onclick = (e) => { e.stopPropagation(); openProfileModal(); };
+  document.getElementById('profile-form').onsubmit = onSaveProfile;
+
   // Chat events
   document.getElementById('chat-toggle-btn').onclick = (e) => { e.stopPropagation(); toggleChat(true); };
   document.getElementById('chat-close-btn').onclick = () => toggleChat(false);
@@ -119,11 +120,16 @@ function showApp() {
   const av = document.getElementById('user-avatar');
   av.textContent = u[0].toUpperCase();
   av.style.background = currentUser?.avatarColor || '#7c3aed';
-  const commentAv = document.getElementById('comment-avatar');
-  commentAv.textContent = u[0].toUpperCase();
-  commentAv.style.background = currentUser?.avatarColor || '#7c3aed';
+  applyTheme(currentUser?.theme || 'dark');
   startReminders();
-  startChatSync();
+  updateOnlineMembers(); // Initial load
+  if (!onlineInterval) onlineInterval = setInterval(updateOnlineMembers, 10000); // Global presence sync
+  fetchNotifications();
+
+}
+
+function applyTheme(theme) {
+  document.body.classList.toggle('light-theme', theme === 'light');
 }
 
 // ====================== DATA ======================
@@ -812,81 +818,345 @@ function togglePanel(id) {
   if (wasHidden) panel.classList.remove('hidden');
 }
 
-// ====================== TEAM CHAT ======================
-function toggleChat(show) {
-  const p = document.getElementById('chat-panel');
-  const o = document.getElementById('chat-overlay');
-  if (show) {
-    p.classList.remove('hidden'); o.classList.remove('hidden');
-    fetchMessages(true); fetchOnlineUsers();
-  } else {
-    p.classList.add('hidden'); o.classList.add('hidden');
-  }
+// ====================== CHAT LOGIC (TIERED) ======================
+currentChatType = 'global'; // global, private, group
+currentChatId = null; // target userId or groupId
+lastMessageId = null; 
+chatInterval = null;
+onlineInterval = null;
+
+
+async function switchChat(type, id = null, name = 'Team Discussion') {
+    currentChatType = type;
+    currentChatId = id;
+    
+    document.querySelectorAll('.room-item').forEach(el => el.classList.remove('active'));
+    if (type === 'global') document.getElementById('room-global').classList.add('active');
+    else if (id) document.getElementById(`room-${id}`)?.classList.add('active');
+
+    document.getElementById('active-chat-name').innerText = name;
+    document.getElementById('active-chat-status').innerText = 
+        type === 'global' ? 'Broadcasting to everyone' : 
+        type === 'private' ? `Direct message with ${name}` : `Group: ${name}`;
+
+    document.getElementById('chat-messages').innerHTML = '';
+    lastMessageId = null;
+    loadMessages();
 }
 
-function startChatSync() {
-  fetchOnlineUsers();
-  onlineInterval = setInterval(fetchOnlineUsers, 30000); // Online every 30s
-  chatInterval = setInterval(() => {
-    if (!document.getElementById('chat-panel').classList.contains('hidden')) {
-      fetchMessages();
+async function loadMessages() {
+    let url = `/chat/messages?type=${currentChatType}`;
+    if (currentChatId) url += `&targetId=${currentChatId}`;
+    if (lastMessageId) url += `&since=${lastMessageId}`;
+    
+    const res = await authFetch(url);
+    if (res?.status === 'success') {
+        const container = document.getElementById('chat-messages');
+        const msgs = res.data.messages;
+        const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+
+        if (msgs.length === 0 && !lastMessageId) {
+            container.innerHTML = '<div class="chat-system-msg">No messages yet. Start the conversation!</div>';
+            return;
+        } else if (msgs.length > 0 && !lastMessageId) {
+            container.innerHTML = '';
+        }
+        
+        msgs.forEach(m => appendChatMessage(m));
+        if (isAtBottom) container.scrollTop = container.scrollHeight;
+        if (msgs.length > 0) lastMessageId = msgs[msgs.length-1].id;
     }
-  }, 4000); // Chat every 4s when panel is open
 }
 
-async function fetchOnlineUsers() {
-  const res = await authFetch('/chat/online');
-  if (res) {
-    const list = document.getElementById('online-users-list');
-    const count = document.getElementById('online-count');
-    count.textContent = res.length;
-    list.innerHTML = res.map(u => `
-      <div class="chat-online-user">
-        <div class="avatar-sm online" style="background:${u.avatarColor || '#7c3aed'}">${u.username[0].toUpperCase()}</div>
-        <span>${escHtml(u.username)}</span>
-      </div>`).join('');
-    
-    // Also update global avatars in the UI
-    const onlineIds = new Set(res.map(u => u.id));
-    document.querySelectorAll('.avatar-sm[data-user-id]').forEach(av => {
-      av.classList.toggle('online', onlineIds.has(av.dataset.user-id));
-    });
-  }
-}
-
-async function fetchMessages(scroll = false) {
-  const res = await authFetch('/chat/messages');
-  if (res) {
+function appendChatMessage(m) {
     const container = document.getElementById('chat-messages');
-    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+    const isMe = m.user.id === (currentUser?.id);
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isMe ? 'me' : ''}`;
     
-    container.innerHTML = res.map(m => `
-      <div class="msg-item ${m.userId === currentUser.id ? 'self' : ''}">
-        <div class="avatar-sm" style="background:${m.user.avatarColor || '#7c3aed'}">${m.user.username[0].toUpperCase()}</div>
-        <div class="msg-content">
-          <div class="msg-info"><strong>${escHtml(m.user.username)}</strong> <span>${new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>
-          <div class="msg-bubble">${escHtml(m.content)}</div>
+    let avatarStyle = m.user.avatarColor ? `style="background:${m.user.avatarColor}"` : '';
+    div.innerHTML = `
+        ${!isMe ? `<div class="chat-msg-avatar" ${avatarStyle}>${m.user.username[0].toUpperCase()}</div>` : ''}
+        <div class="chat-msg-content">
+            ${!isMe ? `<div class="chat-msg-author">${escHtml(m.user.username)}</div>` : ''}
+            <div class="chat-msg-text">${escHtml(m.content)}</div>
+            <div class="chat-msg-time">${timeAgo(m.createdAt)}</div>
         </div>
-      </div>`).join('');
-    
-    if (scroll || isAtBottom) container.scrollTop = container.scrollHeight;
-  }
+    `;
+    container.appendChild(div);
 }
 
 async function onSendMessage(e) {
-  e.preventDefault();
-  const input = document.getElementById('chat-input');
-  const content = input.value.trim();
-  if (!content) return;
-  input.value = '';
-  const res = await authFetch('/chat/messages', 'POST', { content });
-  if (res) fetchMessages(true);
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    const body = { content, type: currentChatType };
+    if (currentChatId) {
+        if (currentChatType === 'private') body.receiverId = currentChatId;
+        else body.groupId = currentChatId;
+    }
+
+    const res = await authFetch('/chat/messages', 'POST', body);
+    if (res?.status === 'success') {
+        input.value = '';
+        loadMessages();
+    }
 }
 
+async function updateOnlineMembers() {
+    const res = await authFetch('/chat/online');
+    if (res?.status === 'success') {
+        const list = document.getElementById('online-users-rooms');
+        const users = res.data.users;
+        list.innerHTML = '';
+        users.forEach(u => {
+            if (u.id === currentUser?.id) return;
+            const div = document.createElement('div');
+            div.className = 'room-item';
+            div.id = `room-${u.id}`;
+            div.onclick = () => switchChat('private', u.id, u.username);
+            div.innerHTML = `
+                <div class="room-icon" style="background:${u.avatarColor || '#7c3aed'}22; color:${u.avatarColor || '#7c3aed'}">
+                    ${u.username[0].toUpperCase()}
+                </div>
+                <span>${escHtml(u.username)}</span>
+            `;
+            list.appendChild(div);
+        });
+    }
+}
+
+function toggleChat() {
+    const panel = document.getElementById('chat-panel');
+    const overlay = document.getElementById('chat-overlay');
+    panel.classList.toggle('hidden');
+    overlay.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) {
+        loadMessages();
+        updateOnlineMembers();
+        fetchGroups(); // Added direct call
+        if (!chatInterval) chatInterval = setInterval(loadMessages, 3000);
+        if (!onlineInterval) onlineInterval = setInterval(updateOnlineMembers, 10000);
+    } else {
+        clearInterval(chatInterval); chatInterval = null;
+        clearInterval(onlineInterval); onlineInterval = null;
+    }
+}
+
+// --- Generic close all ---
 function closeAllPanels() {
   document.getElementById('workspace-panel').classList.add('hidden');
   document.getElementById('notif-panel').classList.add('hidden');
 }
+
+// ====================== NOTIFICATIONS ======================
+async function fetchNotifications() {
+  const res = await authFetch('/auth/notifications');
+  if (res?.status === 'success') {
+    renderNotifList(res.data.notifications);
+  }
+}
+
+function renderNotifList(notifs) {
+  const list = document.getElementById('notif-list');
+  const badge = document.getElementById('notif-count');
+  const unreadCount = notifs.filter(n => !n.isRead).length;
+
+  if (unreadCount > 0) {
+    badge.textContent = unreadCount; badge.classList.remove('hidden');
+  } else badge.classList.add('hidden');
+
+  if (notifs.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.85rem">No notifications yet</div>';
+    return;
+  }
+
+  list.innerHTML = notifs.map(n => `
+    <div class="notif-item ${n.isRead ? '' : 'unread'}" onclick="handleNotifClick('${n.id}', '${n.taskId}')">
+      <div class="notif-content">${escHtml(n.content)}</div>
+      <div class="notif-time">${timeAgo(n.createdAt)}</div>
+    </div>`).join('');
+}
+
+async function handleNotifClick(id, taskId) {
+  if (taskId) { openDetail(taskId); }
+  closeAllPanels();
+  await authFetch('/auth/notifications/read', 'PATCH');
+  fetchNotifications();
+}
+
+async function markAllRead() {
+  await authFetch('/auth/notifications/read', 'PATCH');
+  fetchNotifications();
+}
+
+// ====================== PROFILE ======================
+function openProfileModal() {
+  if (!currentUser) return;
+  document.getElementById('profile-avatar-preview').textContent = currentUser.username[0].toUpperCase();
+  document.getElementById('profile-avatar-preview').style.background = currentUser.avatarColor || '#7c3aed';
+  document.getElementById('profile-username-label').textContent = currentUser.username;
+  document.getElementById('profile-email-label').textContent = currentUser.email;
+  document.getElementById('profile-avatar-color').value = currentUser.avatarColor || '#7c3aed';
+  
+  // Mark active color
+  document.querySelectorAll('.color-opt').forEach(opt => {
+    opt.classList.toggle('active', opt.style.backgroundColor === currentUser.avatarColor);
+  });
+
+  // Mark active theme
+  const theme = currentUser.theme || 'dark';
+  document.getElementById('theme-dark-btn').classList.toggle('active', theme === 'dark');
+  document.getElementById('theme-light-btn').classList.toggle('active', theme === 'light');
+
+  document.getElementById('profile-modal').classList.remove('hidden');
+}
+
+function closeProfileModal() {
+  document.getElementById('profile-modal').classList.add('hidden');
+  document.getElementById('profile-form').reset();
+}
+
+function handleProfileBackdropClick(e) {
+  if (e.target === document.getElementById('profile-modal')) closeProfileModal();
+}
+
+function setProfileColor(color) {
+  document.getElementById('profile-avatar-color').value = color;
+  document.getElementById('profile-avatar-preview').style.background = color;
+  document.querySelectorAll('.color-opt').forEach(opt => {
+    const rgb = opt.style.backgroundColor;
+    opt.classList.toggle('active', color.toLowerCase() === rgbToHex(rgb).toLowerCase());
+  });
+}
+
+function rgbToHex(rgb) {
+  if (!rgb) return '';
+  const parts = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  if (!parts) return rgb; // Already hex or something else
+  delete(parts[0]);
+  for (let i = 1; i <= 3; ++i) {
+    parts[i] = parseInt(parts[i]).toString(16);
+    if (parts[i].length === 1) parts[i] = '0' + parts[i];
+  }
+  return '#' + parts.join('');
+}
+
+function setAppTheme(theme) {
+  document.getElementById('theme-dark-btn').classList.toggle('active', theme === 'dark');
+  document.getElementById('theme-light-btn').classList.toggle('active', theme === 'light');
+  applyTheme(theme);
+}
+
+async function onSaveProfile(e) {
+  e.preventDefault();
+  const avatarColor = document.getElementById('profile-avatar-color').value;
+  const theme = document.getElementById('theme-dark-btn').classList.contains('active') ? 'dark' : 'light';
+  const currentPassword = document.getElementById('profile-current-password').value;
+  const newPassword = document.getElementById('profile-new-password').value;
+
+  const data = { avatarColor, theme };
+  if (newPassword) {
+    data.currentPassword = currentPassword;
+    data.newPassword = newPassword;
+  }
+
+  const res = await authFetch('/auth/profile', 'PUT', data);
+  if (res?.status === 'success') {
+    currentUser = res.data.user;
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    showApp(); 
+    closeProfileModal();
+    toast('Profile updated successfully! ✨', 'success');
+  } else {
+    toast(res?.message || 'Error updating profile', 'error');
+  }
+}
+
+// Global exposure
+window.openProfileModal = openProfileModal;
+async function openCreateGroupModal() {
+    const res = await authFetch('/chat/online');
+    if (res?.status !== 'success') return;
+    
+    const users = res.data.users;
+    toggleChat(); // Minimize chat to clear blur/overlay
+    const body = `
+        <div class="members-picker-container">
+            <div class="field">
+                <label>Group Name</label>
+                <input type="text" id="new-group-name" required placeholder="e.g. Design Team" class="members-search-input">
+            </div>
+            <div class="field">
+                <label>Add Members</label>
+                <input type="text" id="member-search" placeholder="Search team members..." class="members-search-input" style="margin-bottom:10px">
+                <div class="members-picker" id="members-list-picker"></div>
+            </div>
+            <button id="submit-create-group" class="btn-primary" style="width:100%; margin-top:1rem">Create Group</button>
+        </div>
+    `;
+    
+    document.getElementById('gm-title').innerText = 'Create Chat Group';
+    const gmBody = document.getElementById('gm-body');
+    gmBody.innerHTML = body;
+    document.getElementById('generic-modal').classList.remove('hidden');
+
+    const renderPicker = (filter = '') => {
+        const picker = document.getElementById('members-list-picker');
+        const filtered = users.filter(u => u.username.toLowerCase().includes(filter.toLowerCase()));
+        picker.innerHTML = filtered.map(u => `
+            <label class="check-item">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <div class="avatar-sm" style="background:${u.avatarColor || '#7c3aed'}">${u.username[0].toUpperCase()}</div>
+                    <span>${escHtml(u.username)}</span>
+                </div>
+                <input type="checkbox" name="memberIds" value="${u.id}">
+            </label>
+        `).join('');
+    };
+
+    renderPicker();
+
+    document.getElementById('member-search').oninput = (e) => renderPicker(e.target.value);
+
+    document.getElementById('submit-create-group').onclick = async () => {
+        const name = document.getElementById('new-group-name').value;
+        const memberIds = Array.from(gmBody.querySelectorAll('input[name="memberIds"]:checked')).map(i => i.value);
+        if (!name) return toast('Please enter a group name', 'error');
+        
+        const res = await authFetch('/chat/groups', 'POST', { name, memberIds });
+        if (res?.status === 'success') {
+            toast('Group created! 🚀', 'success');
+            closeGenericModal();
+            fetchGroups();
+        }
+    };
+}
+
+async function fetchGroups() {
+    const res = await authFetch('/chat/groups');
+    if (res?.status === 'success') {
+        const list = document.getElementById('groups-list-container');
+        list.innerHTML = res.data.groups.map(g => `
+            <div class="room-item" id="room-${g.id}" onclick="switchChat('group', '${g.id}', '${escHtml(g.name)}')">
+                <div class="room-icon"><i class="fas fa-hashtag"></i></div>
+                <span>${escHtml(g.name)}</span>
+            </div>
+        `).join('');
+    }
+}
+
+window.openCreateGroupModal = openCreateGroupModal;
+
+window.closeProfileModal = closeProfileModal;
+window.handleProfileBackdropClick = handleProfileBackdropClick;
+window.setProfileColor = setProfileColor;
+window.setAppTheme = setAppTheme;
+window.markAllRead = markAllRead;
+window.handleNotifClick = handleNotifClick;
+
 function closeGenericModal() { document.getElementById('generic-modal').classList.add('hidden'); }
 
 // ====================== API HELPERS ======================
@@ -948,3 +1218,40 @@ initAssigneeSearch();
 // Pagination Listeners
 document.getElementById('prev-page')?.addEventListener('click', () => changePage(-1));
 document.getElementById('next-page')?.addEventListener('click', () => changePage(1));
+// Mobile Menu Toggle Logic (Global Initialization)
+const mobileMenuBtn = document.getElementById('mobile-menu-toggle');
+const closeDrawerBtn = document.getElementById('close-drawer-btn');
+const mobileDrawer = document.getElementById('mobile-nav-drawer');
+
+function toggleMobileDrawer() {
+    if (mobileDrawer) mobileDrawer.classList.toggle('hidden');
+}
+
+if (mobileMenuBtn) mobileMenuBtn.onclick = toggleMobileDrawer;
+if (closeDrawerBtn) closeDrawerBtn.onclick = toggleMobileDrawer;
+
+// Mobile Drawer Items Logic
+document.querySelectorAll('.drawer-item').forEach(item => {
+    item.onclick = async () => {
+        const id = item.id;
+        if (id === 'm-view-kanban') document.getElementById('kanban-view-btn').click();
+        if (id === 'm-view-list') document.getElementById('list-view-btn').click();
+        if (id === 'm-view-calendar') document.getElementById('calendar-view-btn').click();
+        if (id === 'm-chat-toggle') toggleChat();
+        if (id === 'm-workspace-btn') document.getElementById('workspace-btn').click();
+        if (id === 'm-logout-btn') document.getElementById('logout-btn').click();
+        
+        // Highlight active drawer item
+        if (!id.includes('logout') && !id.includes('chat') && !id.includes('workspace')) {
+            document.querySelectorAll('.drawer-item').forEach(di => di.classList.remove('active'));
+            item.classList.add('active');
+        }
+        
+        toggleMobileDrawer();
+    };
+});
+
+// App Entry Point
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+});

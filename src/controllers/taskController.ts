@@ -8,7 +8,7 @@ const TASK_INCLUDE = {
   creator: { select: { id: true, username: true, avatarColor: true } },
   assignee: { select: { id: true, username: true, avatarColor: true } },
   workspace: { select: { id: true, name: true } },
-  _count: { select: { comments: true, files: true, activities: true } }
+  _count: { select: { comments: true, files: true, activityLog: true } }
 };
 
 // Get tasks with filtering, pagination, sorting

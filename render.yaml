@@ -7,8 +7,8 @@ services:
     name: taskmaster-pro
     runtime: node
     plan: free
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npx prisma db push --accept-data-loss && node dist/server.js
+    buildCommand: npm install && npm run build
+    startCommand: npx prisma db push --accept-data-loss && npm start
     envVars:
       - key: DATABASE_URL
         fromDatabase:

@@ -8,7 +8,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 prisma.$connect()
   .then(() => {
-    console.log('✅ PostgreSQL Database Ready (Supabase)');
+    console.log('✅ Local Hub Ready (SQLite)');
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server fully live on port ${PORT}`);
     });

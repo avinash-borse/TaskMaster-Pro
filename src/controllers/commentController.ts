@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { catchAsync, AppError } from '../utils/errorHandler.js';
+import { processMentions } from '../utils/mentionHelper.js';
 
 // Get comments for a task
 export const getComments = catchAsync(async (req: Request, res: Response) => {
@@ -39,6 +40,9 @@ export const addComment = catchAsync(async (req: Request, res: Response) => {
   await prisma.activityLog.create({
     data: { taskId, userId, action: 'commented', detail: content.trim().slice(0, 80) }
   });
+
+  // Process @mentions (non-blocking)
+  processMentions(content, userId, taskId).catch(console.error);
 
   res.status(201).json({ status: 'success', data: { comment } });
 });

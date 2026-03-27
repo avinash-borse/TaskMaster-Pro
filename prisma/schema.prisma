@@ -1,6 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  binaryTargets = ["native"]
   engineType    = "binary"
 }
 
@@ -9,12 +9,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model User {
   id              String            @id @default(uuid())
   username        String            @unique
   email           String            @unique
   password        String
-  avatarColor     String            @default("#7c3aed")
+  avatarColor     String?
+  theme           String            @default("dark")
   tasks           Task[]            @relation("TaskCreator")
   assignedTasks   Task[]            @relation("TaskAssignee")
   comments        Comment[]
@@ -23,12 +25,17 @@ model User {
   workspaces      WorkspaceMember[]
   ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
   files           TaskFile[]
-  messages        Message[]
+  messages        Message[]         @relation("UserMessages")
+  receivedMessages Message[]        @relation("ReceivedMessages")
+  ownedGroups     ChatGroup[]       @relation("OwnedGroups")
+  groups          ChatGroup[]       @relation("GroupMembers")
+  notifications   Notification[]    @relation("UserNotifications")
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
   @@map("users")
 }
+
 
 model Workspace {
   id          String            @id @default(uuid())
@@ -72,8 +79,9 @@ model Task {
   assignee    User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
   workspace   Workspace?    @relation(fields: [workspaceId], references: [id])
   comments    Comment[]
-  activities  ActivityLog[]
+  activityLog ActivityLog[]
   files       TaskFile[]
+  notifications Notification[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -122,11 +130,43 @@ model TaskFile {
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  content   String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  content    String
+  userId     String
+  user       User     @relation("UserMessages", fields: [userId], references: [id])
+  receiverId String?   // For Direct Messages
+  receiver   User?    @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  groupId    String?   // For Group Chats
+  group      ChatGroup? @relation(fields: [groupId], references: [id])
+  createdAt  DateTime @default(now())
 
   @@map("messages")
 }
+
+model ChatGroup {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  creatorId   String
+  creator     User     @relation("OwnedGroups", fields: [creatorId], references: [id])
+  members     User[]   @relation("GroupMembers")
+  messages    Message[]
+  createdAt   DateTime @default(now())
+
+  @@map("chat_groups")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  content   String
+  type      String   @default("info") // info, mention, system
+  isRead    Boolean  @default(false)
+  userId    String
+  user      User     @relation("UserNotifications", fields: [userId], references: [id])
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
